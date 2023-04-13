@@ -1,190 +1,214 @@
-/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
+  * @file    main.c
+  * @author  Ac6
+  * @version V1.0
+  * @date    01-December-2013
+  * @brief   Default main function.
   ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
-/* Includes ------------------------------------------------------------------*/
-#include <button.h>
-#include <lcdDisplay.h>
-#include <stepperMotor.h>
-#include <dcMotor.h>
-#include <led.h>
-#include "main.h"
+*/
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
 
-/* USER CODE END Includes */
+#include "stm32f0xx.h"
+#include "init.h"
+#include "lcd.h"
+#include "Screen.h"
+#include "tty.h"
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
+int draw_color = 0xffff;
+int needs_reset = 1;
 
-/* USER CODE END PTD */
+// Weird stuff
+void nano_wait(unsigned int n) {
+    asm(    "        mov r0,%0\n"
+            "repeat: sub r0,#83\n"
+            "        bgt repeat\n" : : "r"(n) : "r0", "cc");
+}
 
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-/* USER CODE END PD */
+void sleep_ms(int ms) {
+    nano_wait(ms * 1000000);
+}
 
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
+void sleep_micros(int mus) {
+    nano_wait(mus * 1000);
+}
 
-/* USER CODE END PM */
+int heartbeat = 0;
 
-/* Private variables ---------------------------------------------------------*/
+void set_gpioa(int pin, int enable) {
+	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+	GPIOA->MODER &= ~(0x11 << (2 * pin));
+	GPIOA->MODER |= 0x01 << (2 * pin);
+	GPIOA->BSRR = 1 << (enable ? pin : (16 + pin));
+}
 
-/* USER CODE BEGIN PV */
 
-/* USER CODE END PV */
+void set_gpiob(int pin, int enable) {
+	RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+	GPIOB->MODER &= ~(0x11 << (2 * pin));
+	GPIOB->MODER |= 0x01 << (2 * pin);
+	GPIOB->BSRR = 1 << (enable ? pin : (16 + pin));
+}
 
-/* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-/* USER CODE BEGIN PFP */
-void init_system();
-void test_system();
-/* USER CODE END PFP */
+void set_heartbeat_led(int enable) {
+	set_gpiob(1, enable);
+	heartbeat = enable;
+}
 
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
+void toggle_heartbeat_led() {
+	set_heartbeat_led(heartbeat ? 0 : 1);
+}
 
-/* USER CODE END 0 */
+int __io_putchar(int c)
+{
+    while(!(USART5->ISR & USART_ISR_TXE));
+    if(c == '\n')
+    {
+        USART5->TDR = '\r';
+        while(!(USART5->ISR & USART_ISR_TXE));
+    }
+    USART5->TDR = c;
+    return c;
+}
 
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
+void init_system() {
+    LCD_Setup();
+    init_buttons();
+    init_opm_tim();
+}
+
+// Begin Motor Control
+
+int high = 0;
+
+void TIM7_IRQHandler(void) {
+    TIM7->SR &= ~TIM_SR_UIF;
+    if(high) {
+        GPIOA->BSRR |= GPIO_BSRR_BR_8;
+        high = 0;
+    } else {
+        GPIOA->BSRR |= GPIO_BSRR_BS_8;
+        high = 1;
+    }
+}
+
+void gen_N_pulses(int n) {
+    TIM15->RCR = n - 1;
+    TIM15->CR1 |= TIM_CR1_CEN;
+
+    TIM16->RCR = n - 1;
+	TIM16->CR1 |= TIM_CR1_CEN;
+}
+
+// End Motor Control
+
+// Begin Screen
+
+void DrawMenuScreen() {
+    if(needs_reset) {
+        LCD_Clear(0x0000);
+        needs_reset = 0;
+    }
+
+    //Draw Title
+    LCD_DrawString(0,00,0xffff,0x0,screen_title,16,1);
+
+    //Draw Selections
+    for(int i = curr_selection; i < num_selections; i++) {
+        if(i == curr_selection) {
+            LCD_DrawFillRectangle(0,(i-curr_selection)*18 + 20,220,12 + (i-curr_selection)*18 + 20 ,0xffff);
+            LCD_DrawString(0,(i-curr_selection) * 18 + 20, 0x0, 0x0, selections[i], 12, 1);
+        } else {
+            LCD_DrawString(0,(i-curr_selection) * 18 + 20, 0xffff, 0x0, selections[i], 12, 1);
+        }
+    }
+}
+
+// end screen
+
+void pulse_stepper() {
+	set_gpioa(2, 1);
+	set_gpioa(6, 1);
+	sleep_micros(1000);
+	set_gpioa(2, 0);
+	set_gpioa(6, 0);
+	sleep_micros(1000);
+}
+
+// Begin GPIO Exti stuff
+
+void EXTI4_15_IRQHandler(void) {
+	pulse_stepper();
+    if(EXTI->PR & EXTI_PR_PR4) { // Up -- 1
+//        if(curr_selection > 0) {
+//            curr_selection -= 1;
+//            needs_reset = 1;
+//        }
+    	toggle_heartbeat_led();
+    	set_gpiob(3, heartbeat);
+        EXTI->PR |= EXTI_PR_PR4;
+    }
+    else if(EXTI->PR & EXTI_PR_PR5) { // Left -- 4
+//        if(prev_state != -1) {
+//            change_state(prev_state);
+//        }
+    	toggle_heartbeat_led();
+		set_gpiob(4, heartbeat);
+        EXTI->PR |= EXTI_PR_PR5;
+    }
+    else if(EXTI->PR & EXTI_PR_PR10) { // Select -- 5
+//        change_state(selection_states[curr_selection]);
+    	toggle_heartbeat_led();
+        EXTI->PR |= EXTI_PR_PR10;
+    }
+    else if(EXTI->PR & EXTI_PR_PR11) { // Right -- 3
+//        gen_N_pulses(200);
+    	toggle_heartbeat_led();
+        EXTI->PR |= EXTI_PR_PR11;
+    }
+    else if(EXTI->PR & EXTI_PR_PR12) { // Down -- 2
+//        if(curr_selection < num_selections - 1) {
+//            curr_selection += 1;
+//            needs_reset = 1;
+//        }
+    	toggle_heartbeat_led();
+        EXTI->PR |= EXTI_PR_PR12;
+    }
+}
+
+// End EXTI
+
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
+	init_buttons();
+	LCD_Setup();
 
-  /* USER CODE END 1 */
+	init_opm_tim();
 
-  /* MCU Configuration--------------------------------------------------------*/
+	// dir
+	set_gpioa(4, 1);
+	set_gpioa(11, 1);
+	// ~en
+	set_gpioa(5, 0);
+	set_gpioa(12, 0);
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	sleep_ms(10);
 
-  /* USER CODE BEGIN Init */
+	gen_N_pulses(100);
 
-  /* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  /* USER CODE BEGIN 2 */
-
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
+//    init_system();
+//    change_state(Select);
+	for(;;) {
+		sleep_ms(167);
+//		toggle_heartbeat_led();
+//		needs_reset = 1;
+//	    draw_screen();
+//		if (heartbeat)
+//		pulse_stepper();
+		gen_N_pulses(100);
+	}
 }
-
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
-void SystemClock_Config(void)
-{
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
-
-/* USER CODE BEGIN 4 */
-void init_system() {
-	init_button();
-	init_lcd();
-	init_stepper_motor();
-	init_dc_motor();
-	init_led();
-}
-
-void test_system() {
-	test_button();
-	test_lcd();
-	test_stepper_motor();
-	test_dc_motor();
-	test_led();
-}
-
-/* USER CODE END 4 */
-
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
-void Error_Handler(void)
-{
-  /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
-  /* USER CODE END Error_Handler_Debug */
-}
-
-#ifdef  USE_FULL_ASSERT
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
-  /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
-}
-#endif /* USE_FULL_ASSERT */
