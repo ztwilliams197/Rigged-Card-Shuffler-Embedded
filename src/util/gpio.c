@@ -1,10 +1,3 @@
-/*
- * gpio.c
- *
- *  Created on: Apr 13, 2023
- *      Author: up
- */
-
 #include "stm32f0xx.h"
 #include "gpio.h"
 
