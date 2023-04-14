@@ -5,8 +5,12 @@
  *      Author: ztwil
  */
 
-#include "stm32f0xx.h"
 #include "init.h"
+
+#include "util/gpio.h"
+#include "util/timer.h"
+
+#include "stm32f0xx.h"
 
 void init_spi2_tft(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
@@ -58,37 +62,41 @@ void init_tim1(void) {
 
 void init_opm_tim15(void) {
     // Init GPIO Output for alternate function
-    RCC->AHBENR  |= RCC_AHBENR_GPIOAEN;
-    GPIOA->MODER &= ~0x30; // A2 -- stepper 1
-    GPIOA->MODER |=  0x20;
-    GPIOA->AFR[0] &= ~0xf00;
+	set_altfunc('A', 2, 0b000); // AF0
+//    RCC->AHBENR  |= RCC_AHBENR_GPIOAEN;
+//    GPIOA->MODER &= ~0x30; // A2 -- stepper 1
+//    GPIOA->MODER |=  0x20;
+//    GPIOA->AFR[0] &= ~0xf00;
 
     RCC->APB2ENR |= RCC_APB2ENR_TIM15EN;
-    TIM15->PSC = 1000-1;
-    TIM15->ARR = 80-1;
-    TIM15->CCR1 = 40-1;
-    TIM15->CCMR1 |= TIM_CCMR1_OC1M | TIM_CCMR1_OC1PE;
-    TIM15->CCER |= TIM_CCER_CC1E;
-    TIM15->BDTR |= TIM_BDTR_MOE;
-    TIM15->CR1 |= TIM_CR1_OPM | TIM_CR1_ARPE;
+    init_opm(TIM15);
+//    TIM15->PSC = 1000-1;
+//    TIM15->ARR = 80-1;
+//    TIM15->CCR1 = 40-1;
+//    TIM15->CCMR1 |= TIM_CCMR1_OC1M | TIM_CCMR1_OC1PE;
+//    TIM15->CCER |= TIM_CCER_CC1E;
+//    TIM15->BDTR |= TIM_BDTR_MOE;
+//    TIM15->CR1 |= TIM_CR1_OPM | TIM_CR1_ARPE;
 }
 
 void init_opm_tim16(void) {
     // Init GPIO Output for alternate function
-    RCC->AHBENR  |= RCC_AHBENR_GPIOAEN;
-    GPIOA->MODER &= ~0x3000; // A6 -- stepper 2
-    GPIOA->MODER |=  0x2000;
-    GPIOA->AFR[0] &= ~0xf000000;
-    GPIOA->AFR[0] |= 0x5000000;
+	set_altfunc('A', 6, 0b101); // AF5
+//    RCC->AHBENR  |= RCC_AHBENR_GPIOAEN;
+//    GPIOA->MODER &= ~0x3000; // A6 -- stepper 2
+//    GPIOA->MODER |=  0x2000;
+//    GPIOA->AFR[0] &= ~0xf000000;
+//    GPIOA->AFR[0] |= 0x5000000;
 
     RCC->APB2ENR |= RCC_APB2ENR_TIM16EN;
-    TIM16->PSC = 1000-1;
-    TIM16->ARR = 80-1;
-    TIM16->CCR1 = 40-1;
-    TIM16->CCMR1 |= TIM_CCMR1_OC1M | TIM_CCMR1_OC1PE;
-    TIM16->CCER |= TIM_CCER_CC1E;
-    TIM16->BDTR |= TIM_BDTR_MOE;
-    TIM16->CR1 |= TIM_CR1_OPM | TIM_CR1_ARPE;
+    init_opm(TIM16);
+//    TIM16->PSC = 1000-1;
+//    TIM16->ARR = 80-1;
+//    TIM16->CCR1 = 40-1;
+//    TIM16->CCMR1 |= TIM_CCMR1_OC1M | TIM_CCMR1_OC1PE;
+//    TIM16->CCER |= TIM_CCER_CC1E;
+//    TIM16->BDTR |= TIM_BDTR_MOE;
+//    TIM16->CR1 |= TIM_CR1_OPM | TIM_CR1_ARPE;
 }
 
 void init_opm_tim(void) {

@@ -1,5 +1,5 @@
-#ifndef __SRC_GPIO_H__
-#define __SRC_GPIO_H__
+#ifndef __UTIL_GPIO_H__
+#define __UTIL_GPIO_H__
 
 #include "stm32f0xx.h"
 
@@ -21,4 +21,4 @@ void set_output(char pin_group, int pin, int value);
 
 void set_altfunc(char pin_group, int pin, int altfunc_id);
 
-#endif // __SRC_GPIO_H__
+#endif // __UTIL_GPIO_H__

@@ -1,5 +1,6 @@
-#include "stm32f0xx.h"
 #include "gpio.h"
+
+#include "stm32f0xx.h"
 
 GPIO_TypeDef *enable_pins(char pin_group) {
 	switch (pin_group) {
