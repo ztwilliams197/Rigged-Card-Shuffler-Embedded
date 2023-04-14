@@ -14,6 +14,7 @@
 #include "lcd.h"
 #include "Screen.h"
 #include "tty.h"
+#include "StepperMotor.h"
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -127,21 +128,39 @@ void DrawMenuScreen() {
     }
 }
 
+void DrawUARTInput() {
+    if(needs_reset) {
+        LCD_Clear(0x0000);
+        needs_reset = 0;
+    }
+
+    //Draw Title
+    LCD_DrawString(0,00,0xffff,0x0,screen_title,16,1);
+
+    //Draw Selections
+    for(int i = 0; i < num_selections; i++) {
+        LCD_DrawString(0,(i) * 18 + 20, 0xffff, 0x0, selections[i], 12, 1);
+    }
+}
+
 // end screen
 
-void pulse_stepper() {
-	set_gpioa(2, 1);
-	set_gpioa(6, 1);
-	sleep_micros(1000);
-	set_gpioa(2, 0);
-	set_gpioa(6, 0);
-	sleep_micros(1000);
+void pulse_stepper(int n) {
+    int i;
+    for(i = 0; i < n; i++) {
+        set_gpioa(2, 1);
+        set_gpioa(6, 1);
+        sleep_micros(1000);
+        set_gpioa(2, 0);
+        set_gpioa(6, 0);
+        sleep_micros(1000);
+    }
 }
 
 // Begin GPIO Exti stuff
 
 void EXTI4_15_IRQHandler(void) {
-	pulse_stepper();
+    gen_N_pulses(numStepsBetweenBins((current_bin + 1) % NUM_BINS, 1));
     if(EXTI->PR & EXTI_PR_PR4) { // Up -- 1
 //        if(curr_selection > 0) {
 //            curr_selection -= 1;
@@ -197,20 +216,23 @@ int main(void)
 
 	sleep_ms(10);
 
-	gen_N_pulses(100);
+	//gen_N_pulses(100);
 
 
 //    init_system();
-//    change_state(Select);
+    change_state(TestUART);
+
+    //addInputToBuffer("Hello World");
 	int i = 0;
 	for(;;) {
 //		sleep_micros(1670);
 		if (++i % 100 == 0)
 			toggle_heartbeat_led();
-//		needs_reset = 1;
-//	    draw_screen();
+	    draw_screen();
+	    addInputToBuffer("Testing Buffer");
+	    //sleep_ms(1000);
 //		if (heartbeat)
 //		pulse_stepper();
-		gen_N_pulses(100);
+		//gen_N_pulses(100);
 	}
 }

@@ -8,9 +8,9 @@
 #ifndef SCREEN_H_
 #define SCREEN_H_
 
-#define MAXSELECTIONS 20
+#define MAXSELECTIONS 17
 
-typedef enum screens{Select,Testing,CardShuffling,TestLCD,TestMotors,BlackJack,Random}screen;
+typedef enum screens{Select,Testing,CardShuffling,TestLCD,TestMotors,TestUART,BlackJack,Random}screen;
 
 int needs_reset;
 void (*draw_screen)();
@@ -27,5 +27,8 @@ void change_state(screen state);
 void select_state();
 void testing_state();
 void cardshuffling_state();
+void DrawUARTInput();
+void test_UART_state();
+void addInputToBuffer(const char string[]);
 
 #endif /* SCREEN_H_ */

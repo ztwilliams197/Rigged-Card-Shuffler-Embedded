@@ -62,6 +62,26 @@ void cardshuffling_state() {
     prev_state = Select;
 }
 
+void test_UART_state() {
+    needs_reset = 1;
+    draw_screen = DrawUARTInput;
+    curr_state = TestUART;
+    char title[] = "Testing UART";
+    strcpy(screen_title, title);
+    num_selections = 0;
+    curr_selection = 0;
+    prev_state = Testing;
+}
+
+void addInputToBuffer(const char string[]) {
+    strcpy(selections[curr_selection], string);
+    curr_selection = (curr_selection + 1) % MAXSELECTIONS;
+    if(num_selections < MAXSELECTIONS) {
+        num_selections += 1;
+    }
+    needs_reset = 1;
+}
+
 void change_state(screen state) {
     if(state == Select) {
         select_state();
@@ -73,6 +93,8 @@ void change_state(screen state) {
 
     } else if(state == TestMotors) {
 
+    } else if(state == TestUART) {
+        test_UART_state();
     }
 }
 
