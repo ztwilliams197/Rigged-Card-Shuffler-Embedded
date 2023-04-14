@@ -202,9 +202,11 @@ int main(void)
 
 //    init_system();
 //    change_state(Select);
+	int i = 0;
 	for(;;) {
-		sleep_ms(167);
-//		toggle_heartbeat_led();
+//		sleep_micros(1670);
+		if (++i % 100 == 0)
+			toggle_heartbeat_led();
 //		needs_reset = 1;
 //	    draw_screen();
 //		if (heartbeat)
