@@ -10,6 +10,8 @@
 #include "util/gpio.h"
 #include "util/timer.h"
 
+#include <stdlib.h>
+
 #include "stm32f0xx.h"
 
 void init_spi2_tft(void) {
