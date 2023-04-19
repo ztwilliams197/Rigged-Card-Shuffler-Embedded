@@ -10,6 +10,8 @@
 #include "util/gpio.h"
 #include "util/timer.h"
 
+#include <stdlib.h>
+
 #include "stm32f0xx.h"
 
 void init_spi2_tft(void) {
@@ -125,3 +127,48 @@ void init_buttons() {
     NVIC_EnableIRQ(EXTI4_15_IRQn);
     NVIC_SetPriority(EXTI4_15_IRQn,0);
 }
+
+void init_uart() {
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+    GPIOA->MODER &= ~GPIO_MODER_MODER9;
+    GPIOA->MODER &= ~GPIO_MODER_MODER10;
+    GPIOA->MODER |= GPIO_MODER_MODER9_1;
+    GPIOA->MODER |= GPIO_MODER_MODER10_1;
+
+    GPIOA->AFR[1] &= ~GPIO_AFRH_AFR9;
+    GPIOA->AFR[1] |= 0b0001 << 4;
+    GPIOA->AFR[1] &= ~GPIO_AFRH_AFR10;
+    GPIOA->AFR[1] |= 0b0001 << 8;
+
+    RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
+
+    USART1->CR1 &= ~USART_CR1_UE;
+    USART1->CR1 &= ~(USART_CR1_M | 0b1<<28);        // 1 start bit, 8 data bits
+    USART1->CR2 &= ~USART_CR2_STOP;                 // 1 stop bit
+    USART1->CR1 &= ~USART_CR1_PCE;                  // no parity bit
+    USART1->CR1 &= ~USART_CR1_OVER8;                // over-sampling by 16 in case of noise
+    USART1->BRR = (uint16_t)((48000000)/(9600));    // 9600 baud rate?
+    USART1->CR1 |= USART_CR1_TE | USART_CR1_RE;
+
+    //USART1->CR3 &= ~USART_CR3_OVRDIS;
+    USART1->CR1 |= USART_CR1_RXNEIE;
+    NVIC_EnableIRQ(USART1_IRQn);
+    //NVIC->ISER[0] |= 1 << USART1_IRQn;
+    //NVIC_SetPriority(USART1_IRQn, 0);
+
+    USART1->CR1 |= USART_CR1_UE;
+
+    while(((USART1->ISR & USART_ISR_TEACK) == 0) || ((USART1->ISR & USART_ISR_REACK) == 0)){ }
+}
+
+void init_breaker(void) {
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+    GPIOB->MODER &= ~(GPIO_MODER_MODER7);
+    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPDR7);
+    GPIOB->PUPDR |= GPIO_PUPDR_PUPDR7_0;
+}
+
+//void init_breaker_exti(void) {
+//    RCC->APB2ENR |=RCC_APB2ENR_SYSCFGCOMPEN;
+//    SYSCFG->EXTICR[0] = SYSCFG->EXTICR[1] = 0; // this will mess shit up if Zach's code also does EXTI shit
+//}

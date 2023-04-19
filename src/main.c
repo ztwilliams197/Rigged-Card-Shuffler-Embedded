@@ -355,6 +355,28 @@ void EXTI4_15_IRQHandler(void) {
 
 // End EXTI
 
+void write_char(char c) {
+    while(!(USART1->ISR & USART_ISR_TXE)) { }
+    USART1->TDR = c;
+}
+
+void write_string(char* c, int count) {
+    for(int i = 0; i < count; i++){
+        write_char(c[i]);
+    }
+}
+
+void USART1_IRQHandler() {
+    USART1->ISR &= ~USART_ISR_RXNE;
+    unsigned char value = USART1->RDR; // should clear rxne flag
+    char str[50] = "Received Byte: 0x~~\n";
+    str[17] = (value >> 4) + '0';
+    str[18] = (value & 0xf) + '0';
+    write_string(str, strlen(str));
+
+    // TODO pass this as a hex string to zach's shit
+}
+
 int main(void)
 {
 	init_buttons();
