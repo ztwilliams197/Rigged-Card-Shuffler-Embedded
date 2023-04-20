@@ -12,6 +12,7 @@
 
 void init_spi2_tft(void);
 void init_lcd_spi(void);
+void init_refresh_tim();
 
 void init_tim1();
 void init_opm_tim();

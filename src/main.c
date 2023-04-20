@@ -98,12 +98,14 @@ void TIM7_IRQHandler(void) {
     }
 }
 
-void gen_N_pulses(int n) {
+void gen_N_pulses_dispenser(int n) {
     TIM15->RCR = n - 1;
     TIM15->CR1 |= TIM_CR1_CEN;
+}
 
+void gen_N_pulses_wheel(int n) {
     TIM16->RCR = n - 1;
-	TIM16->CR1 |= TIM_CR1_CEN;
+    TIM16->CR1 |= TIM_CR1_CEN;
 }
 
 // End Motor Control
@@ -212,6 +214,12 @@ void USART1_IRQHandler() {
 	}
 }
 
+void TIM6_DAC_IRQHandler() {
+    if(needs_reset) {
+        draw_screen();
+    }
+}
+
 int main(void)
 {
 	init_buttons();
@@ -240,9 +248,6 @@ int main(void)
 		//sleep_micros(1670000);
 		//if (++i % 100 == 0)
 			//toggle_heartbeat_led();
-	    if(needs_reset) {
-	        draw_screen();
-	    }
 	    //sleep_ms(1000);
 //		if (heartbeat)
 //		pulse_stepper();

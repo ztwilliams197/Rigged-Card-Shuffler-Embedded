@@ -36,6 +36,21 @@ void init_lcd_spi(void) {
     init_spi2_tft();
 }
 
+void init_refresh_tim() {
+    RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
+
+    TIM6->CR1 &= ~TIM_CR1_CEN;
+
+    TIM6->ARR = 1000 - 1;
+    TIM6->PSC = 1600 - 1;
+
+    TIM6->DIER = TIM_DIER_UIE;
+
+    NVIC_EnableIRQ(TIM6_DAC_IRQn); // TODO Add priority
+
+    TIM6->CR1 |= TIM_CR1_CEN;
+}
+
 void init_tim1(void) {
     RCC->AHBENR  |= RCC_AHBENR_GPIOAEN;
     GPIOA->MODER &= ~0x00ff0000;
