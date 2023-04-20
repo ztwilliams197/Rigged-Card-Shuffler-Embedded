@@ -16,6 +16,7 @@
 #include "tty.h"
 #include "StepperMotor.h"
 #include "structs.h"
+#include "uart.h"
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -355,26 +356,48 @@ void EXTI4_15_IRQHandler(void) {
 
 // End EXTI
 
-void write_char(char c) {
-    while(!(USART1->ISR & USART_ISR_TXE)) { }
-    USART1->TDR = c;
-}
-
-void write_string(char* c, int count) {
-    for(int i = 0; i < count; i++){
-        write_char(c[i]);
-    }
+void write_string(char *c, int count) {
+    c[count + 1] = '\0';
+    send_string(USART1, c);
 }
 
 void USART1_IRQHandler() {
-    USART1->ISR &= ~USART_ISR_RXNE;
-    unsigned char value = USART1->RDR; // should clear rxne flag
-    char str[50] = "Received Byte: 0x~~\n";
-    str[17] = (value >> 4) + '0';
-    str[18] = (value & 0xf) + '0';
-    write_string(str, strlen(str));
+//    USART1->ISR &= ~USART_ISR_RXNE;
+	int packet_int = USART1->RDR & 0xff; // reading RDR should clear RXNE flag (line above)
+	rx_packet packet = translate_packet(packet_int);
 
-    // TODO pass this as a hex string to zach's shit
+    // debug print to LCD screen
+	switch (packet.action) {
+		case RX_RESET:
+			addInputToBuffer("rx RESET");
+			break;
+		case RX_START_SHUFFLE_MCU:
+			addInputToBuffer("rx MCU shf ACK");
+			break;
+		case RX_START_SHUFFLE_SBC:
+			addInputToBuffer("rx SBC shf ACK");
+			break;
+		case IDENTIFY_SLOT:
+			char s1[20] = "rx Slot ID = ~~";
+			s1[13] = '0' + (packet.metadata / 10) % 10;
+			s1[14] = '0' + packet.metadata % 10;
+			addInputToBuffer(s1);
+			break;
+		case REINDEX_SLOT:
+			char s2[20] = "rx ReIndex = ~~";
+			s2[13] = '0' + (packet.metadata / 10) % 10;
+			s2[14] = '0' + packet.metadata % 10;
+			addInputToBuffer(s2);
+			break;
+		default:
+			char s3[25] = "Unknown packet: 0x~~";
+			int h = packet_int >> 4;
+			s3[18] = (h >= 10 ? 'a' - 10 : '0') + h;
+			h = packet_int & 0xf;
+			s3[19] = (h >= 10 ? 'a' - 10 : '0') + h;
+			addInputToBuffer(s3);
+			break;
+	}
 }
 
 int main(void)
@@ -397,7 +420,7 @@ int main(void)
 
 
 //    init_system();
-    change_state(ValueSelect);
+    change_state(Testing);
 
     //addInputToBuffer("Hello World");
 	int i = 0;

@@ -46,3 +46,16 @@ int build_packet(tx_action action, int arg) {
 	}
 	return ~0;
 }
+
+void send_packet(USART_TypeDef *usart, int packet) {
+	while(!(usart->ISR & USART_ISR_TXE)) { }
+	usart->TDR = (uint16_t) (packet & 0xff);
+}
+
+void send_string(USART_TypeDef *usart, char *str) {
+	while (*str) {
+		send_packet(usart, build_packet(TX_STRING, (int) *str));
+		str++;
+	}
+	write_packet(usart, build_packet(TX_STRING, 0)); // null terminator
+}

@@ -15,4 +15,7 @@ rx_packet translate_packet(int packet);
 int build_packet0(tx_action action);
 int build_packet(tx_action action, int arg);
 
+void send_packet(USART_TypeDef *usart, int packet);
+void send_string(USART_TypeDef *usart, char *str); // must be null-terminated
+
 #endif // __UART_H__
