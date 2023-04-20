@@ -20,4 +20,6 @@ typedef struct _shuffle_data {
     int curr_player;
 } shuffle_data;
 
+shuffle_data shuffle;
+
 #endif /* STRUCTS_H_ */
