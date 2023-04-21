@@ -12,12 +12,11 @@
 #define MAX_PLAYERS 4
 
 typedef struct _shuffle_data {
-    screen game;
+    char game[30];
     int num_players;
-    int mode;
+    int dealer;
+    int table;
     int winners[MAX_PLAYERS];
-    int hands[MAX_PLAYERS][5];
-    int curr_player;
 } shuffle_data;
 
 shuffle_data shuffle;
