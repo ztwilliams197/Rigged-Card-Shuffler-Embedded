@@ -258,6 +258,7 @@ void redraw() {
  *  - add necessary screen state impl's: WakeSyncScreen, Shuffling
  *  - fix and integrate stepper motor control functions to UART handler and shuffling section
  *  - add config strings transmissions to main
+ *  - implement and integrate dc motor control around shuffle block
  */
 int main(void)
 {
@@ -331,6 +332,8 @@ _exec_loop:
 	}
 
 	// Start shuffling
+	// TODO enable/disable dc motors around shuffling block
+//	enable_dc_motors();
 	current_bin_count = 0;
 	send_packet(USART1, build_packet(CAPTURE_IMAGE, current_bin_count));
 
@@ -338,6 +341,7 @@ _exec_loop:
 		CHECK_SYSTEM_RESET(); // SYSTEM RESET!!!
 		redraw();
 	}
+//	disable_dc_motors();
 
 	// TODO output cards from bins
 //	set_stepper_dir(???);
