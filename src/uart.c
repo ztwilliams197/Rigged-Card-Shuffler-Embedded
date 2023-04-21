@@ -57,5 +57,5 @@ void send_string(USART_TypeDef *usart, char *str) {
 		send_packet(usart, build_packet(TX_STRING, (int) *str));
 		str++;
 	}
-	write_packet(usart, build_packet(TX_STRING, 0)); // null terminator
+	send_packet(usart, build_packet(TX_STRING, 0)); // null terminator
 }

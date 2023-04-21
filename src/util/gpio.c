@@ -56,6 +56,18 @@ void set_output(char pin_group, int pin, int value) {
 	// set value
 	gpio->BSRR = 1 << (value ? pin : (16 + pin));
 }
+int read_output(char pin_group, int pin) {
+	// get group struct
+	GPIO_TypeDef *gpio = enable_pins(pin_group);
+
+	// get value
+	return (gpio->ODR >> pin) & 0b1;
+}
+int toggle_output(char pin_group, int pin) {
+	int new_state = read_output(pin_group, pin) ? 0 : 1;
+	set_output(pin_group, pin, new_state);
+	return new_state;
+}
 
 void set_altfunc(char pin_group, int pin, int altfunc_id) {
 	// enable pin group, get group struct
