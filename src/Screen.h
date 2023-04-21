@@ -10,7 +10,7 @@
 
 #define MAXSELECTIONS 17
 
-typedef enum screens{Select,Testing,TestLCD,TestMotors,TestUART,CardShuffling,BlackJack,Random,NumPlayerSelect,PlayerSelect,ValueSelect,SuitSelect,WinnerSelect,Confirm,Loading}screen;
+typedef enum screens{Select,Testing,TestLCD,TestMotors,TestUART,CardShuffling,BlackJack,Random,NumPlayerSelect,PlayerSelect,ValueSelect,SuitSelect,WinnerSelect,Confirm,Loading,WakeSyncScreen,Shuffling}screen;
 
 int needs_reset;
 void (*draw_screen)();

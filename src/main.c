@@ -161,43 +161,47 @@ void EXTI4_15_IRQHandler(void) {
 
 // End EXTI
 
-void write_string(char *c, int count) {
-    c[count + 1] = '\0';
-    send_string(USART1, c);
-}
+int got_reset = 0;
+int got_mcu_start = 0;
+int got_sbc_start = 0;
+int current_bin_count = 0;
 
 void USART1_IRQHandler() {
 //    USART1->ISR &= ~USART_ISR_RXNE;
 	int packet_int = USART1->RDR & 0xff; // reading RDR should clear RXNE flag (line above)
 	rx_packet packet = translate_packet(packet_int);
 
-    // debug print to LCD screen
 	switch (packet.action) {
 		case RX_RESET:
-			addInputToBuffer("rx RESET");
+			got_reset = 1;
+//			addInputToBuffer("rx RESET");
 			break;
 		case RX_START_SHUFFLE_MCU:
-			addInputToBuffer("rx MCU shf ACK");
+			got_mcu_start = 1;
+//			addInputToBuffer("rx MCU shf ACK");
 			break;
 		case RX_START_SHUFFLE_SBC:
-			addInputToBuffer("rx SBC shf ACK");
+			got_sbc_start = 1;
+//			addInputToBuffer("rx SBC shf ACK");
 			break;
 		case IDENTIFY_SLOT:
-			//char s1[20] = "rx Slot ID = ~~";
-		    strcpy(s1, "rx Slot ID = ~~");
-			s1[13] = '0' + (packet.metadata / 10) % 10;
-			s1[14] = '0' + packet.metadata % 10;
-			addInputToBuffer(s1);
+			// next bin = packet.metadata --> TODO impl stepper motor spinning to bin
+			if (++current_bin_count < 52)
+				send_packet(USART1, build_packet(CAPTURE_IMAGE, current_bin_count));
+//		    strcpy(s1, "rx Slot ID = ~~");
+//			s1[13] = '0' + (packet.metadata / 10) % 10;
+//			s1[14] = '0' + packet.metadata % 10;
+//			addInputToBuffer(s1);
 			break;
 		case REINDEX_SLOT:
-			//char s2[20] = "rx ReIndex = ~~";
-		    strcpy(s2, "rx ReIndex = ~~");
-			s2[13] = '0' + (packet.metadata / 10) % 10;
-			s2[14] = '0' + packet.metadata % 10;
-			addInputToBuffer(s2);
+//		    strcpy(s2, "rx ReIndex = ~~");
+//			s2[13] = '0' + (packet.metadata / 10) % 10;
+//			s2[14] = '0' + packet.metadata % 10;
+//			addInputToBuffer(s2);
+			// TODO impl reindexing/error correction of current_bin_count
 			break;
 		default:
-			//char s3[25] = "Unknown packet: 0x~~";
+		    // debug print to LCD screen
 		    strcpy(s3, "Unknown packet: 0x~~");
 			int h = packet_int >> 4;
 			s3[18] = (h >= 10 ? 'a' - 10 : '0') + h;
@@ -208,14 +212,26 @@ void USART1_IRQHandler() {
 	}
 }
 
-/*
-void TIM7_IRQHandler(void) {
-    TIM7->SR &= ~TIM_SR_UIF;
+void redraw() {
+	if (needs_reset) {
+		draw_screen();
+		needs_reset = 0;
+	}
+	sleep_ms(33); // run @ ~30Hz
+}
 
-}*/
+#define CHECK_SYSTEM_RESET() do { if (got_reset) goto _exec_loop; } while (0)
 
+/**
+ * TODOs for integration:
+ *  - clean up init's
+ *  - add necessary screen state impl's: WakeSyncScreen, Shuffling
+ *  - fix and integrate stepper motor control functions to UART handler and shuffling section
+ *  - add config strings transmissions to main
+ */
 int main(void)
 {
+	// INIT
 	init_buttons();
 	LCD_Setup();
 
@@ -230,44 +246,66 @@ int main(void)
 
 	sleep_ms(10);
 
-	//gen_N_pulses(100);
-
 
 //    init_system();
-	//change_state(PrepScreen);
-    change_state(CardShuffling);
 
-    //addInputToBuffer("Hello World");
 	int i = 0;
-	for(;;) {
-	    // Wait for ack
+_exec_loop:
+	// reset state flags
+	got_reset = 0;
+	got_mcu_start = 0;
+	got_sbc_start = 0;
+	current_bin_count = 0;
 
-	    change_state(CardShuffling);
-
-	    //while(curr_state != Shuffle) {
-	        if(needs_reset) {
-	                    draw_screen();
-	                    needs_reset = 0;
-	        }
-	    //}
-
-	    //change_state(Loading);
-
-	    // Send Shuffle info
-
-	    /*for(int i = 0; i < 52; i++) {
-	     * wait for bin number
-	     * move motors
-	     * send signal to pi that we moved motors
-	    }
-	     */
-
-		//sleep_micros(1670000);
-		//if (++i % 100 == 0)
-			//toggle_heartbeat_led();
-	    //sleep_ms(1000);
-//		if (heartbeat)
-//		pulse_stepper();
-		//gen_N_pulses(50);
+	// Wait for RESET packet conf
+	change_state(WakeSyncScreen); // "Initializing systems" or something on display??
+	while (!got_reset) {
+		send_packet(USART1, build_packet0(TX_RESET));
+		redraw();
 	}
+	// now, flush all remaining reset packets to avoid reset "boot-loop" (runs ~1s)
+	for (i = 0; i < 30; i++) {
+		redraw();
+	}
+	got_reset = 0; // clear reset flag
+
+	// Start configurations
+	change_state(CardShuffling); // this is actually the configuration menu.... TODO fix name of screen state
+
+	while(curr_state != Shuffling) { // or however you want to indicate that system is ready to shuffle
+		CHECK_SYSTEM_RESET(); // SYSTEM RESET!!!
+		if (got_sbc_start) {
+			change_state(Shuffling);
+			send_packet(USART1, build_packet0(TX_START_SHUFFLE_SBC));
+			break;
+		}
+		redraw();
+	}
+	if (!got_sbc_start) {
+		// TODO add transmission of configurations here
+//		for (char *str : list_of_configs) {
+//			send_string(USART1, str); // assuming str is properly null-terminated...
+//		}
+		while (!got_mcu_start) {
+			CHECK_SYSTEM_RESET(); // SYSTEM RESET!!!
+			send_packet(USART1, build_packet0(TX_START_SHUFFLE_MCU));
+			redraw();
+		}
+	}
+
+	// Start shuffling
+	current_bin_count = 0;
+	send_packet(USART1, build_packet(CAPTURE_IMAGE, current_bin_count));
+
+	while (current_bin_count < 52) {
+		CHECK_SYSTEM_RESET(); // SYSTEM RESET!!!
+		redraw();
+	}
+
+	// TODO output cards from bins
+//	set_stepper_dir(???);
+//	gen_N_pulses_wheel(200); // one full rotation to eject all cards... might need to add delays between bins though???
+
+
+	goto _exec_loop; // inf loop for system loop
 }
