@@ -36,20 +36,21 @@ void init_lcd_spi(void) {
     init_spi2_tft();
 }
 
+/*
 void init_refresh_tim() {
-    RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
+    RCC->APB1ENR |= RCC_APB1ENR_TIM7EN;
 
-    TIM6->CR1 &= ~TIM_CR1_CEN;
+    TIM7->CR1 &= ~TIM_CR1_CEN;
 
-    TIM6->ARR = 1000 - 1;
-    TIM6->PSC = 1600 - 1;
+    TIM7->PSC = 1600 - 1;
+    TIM7->ARR = 1000 - 1;
 
-    TIM6->DIER = TIM_DIER_UIE;
+    TIM7->DIER |= TIM_DIER_UIE;
 
-    NVIC_EnableIRQ(TIM6_DAC_IRQn); // TODO Add priority
+    TIM7->CR1 |= TIM_CR1_CEN;
 
-    TIM6->CR1 |= TIM_CR1_CEN;
-}
+    NVIC_EnableIRQ(TIM7_IRQn); // TODO Add priority
+}*/
 
 void init_tim1(void) {
     RCC->AHBENR  |= RCC_AHBENR_GPIOAEN;

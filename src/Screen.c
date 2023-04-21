@@ -54,7 +54,6 @@ void testing_state() {
 }
 
 void cardshuffling_state() {
-    needs_reset = 1;
     draw_screen = DrawMenuScreen;
     on_press = ShuffleOnPress;
     curr_state = CardShuffling;
@@ -69,6 +68,7 @@ void cardshuffling_state() {
     }
     curr_selection = 0;
     prev_state = -1;
+    needs_reset = 1;
 }
 
 void test_UART_state() {

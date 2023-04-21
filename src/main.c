@@ -24,6 +24,10 @@
 int draw_color = 0xffff;
 int needs_reset = 1;
 
+char s1[20];
+char s2[20];
+char s3[25];
+
 // Weird stuff
 void nano_wait(unsigned int n) {
     asm(    "        mov r0,%0\n"
@@ -85,19 +89,6 @@ void init_system() {
 
 // Begin Motor Control
 
-int high = 0;
-
-void TIM7_IRQHandler(void) {
-    TIM7->SR &= ~TIM_SR_UIF;
-    if(high) {
-        GPIOA->BSRR |= GPIO_BSRR_BR_8;
-        high = 0;
-    } else {
-        GPIOA->BSRR |= GPIO_BSRR_BS_8;
-        high = 1;
-    }
-}
-
 void gen_N_pulses_dispenser(int n) {
     TIM15->RCR = n - 1;
     TIM15->CR1 |= TIM_CR1_CEN;
@@ -125,7 +116,7 @@ void pulse_stepper(int n) {
 // Begin GPIO Exti stuff
 
 void EXTI4_15_IRQHandler(void) {
-    gen_N_pulses(numStepsBetweenBins((current_bin + 51) % NUM_BINS, 1));
+    gen_N_pulses_dispenser(numStepsBetweenBins((current_bin + 26) % NUM_BINS, 1));
     if(EXTI->PR & EXTI_PR_PR4) { // Up -- 1
         on_press(0);
 //        if(curr_selection > 0) {
@@ -192,19 +183,22 @@ void USART1_IRQHandler() {
 			addInputToBuffer("rx SBC shf ACK");
 			break;
 		case IDENTIFY_SLOT:
-			char s1[20] = "rx Slot ID = ~~";
+			//char s1[20] = "rx Slot ID = ~~";
+		    strcpy(s1, "rx Slot ID = ~~");
 			s1[13] = '0' + (packet.metadata / 10) % 10;
 			s1[14] = '0' + packet.metadata % 10;
 			addInputToBuffer(s1);
 			break;
 		case REINDEX_SLOT:
-			char s2[20] = "rx ReIndex = ~~";
+			//char s2[20] = "rx ReIndex = ~~";
+		    strcpy(s2, "rx ReIndex = ~~");
 			s2[13] = '0' + (packet.metadata / 10) % 10;
 			s2[14] = '0' + packet.metadata % 10;
 			addInputToBuffer(s2);
 			break;
 		default:
-			char s3[25] = "Unknown packet: 0x~~";
+			//char s3[25] = "Unknown packet: 0x~~";
+		    strcpy(s3, "Unknown packet: 0x~~");
 			int h = packet_int >> 4;
 			s3[18] = (h >= 10 ? 'a' - 10 : '0') + h;
 			h = packet_int & 0xf;
@@ -214,11 +208,11 @@ void USART1_IRQHandler() {
 	}
 }
 
-void TIM6_DAC_IRQHandler() {
-    if(needs_reset) {
-        draw_screen();
-    }
-}
+/*
+void TIM7_IRQHandler(void) {
+    TIM7->SR &= ~TIM_SR_UIF;
+
+}*/
 
 int main(void)
 {
@@ -240,11 +234,34 @@ int main(void)
 
 
 //    init_system();
+	//change_state(PrepScreen);
     change_state(CardShuffling);
 
     //addInputToBuffer("Hello World");
 	int i = 0;
 	for(;;) {
+	    // Wait for ack
+
+	    change_state(CardShuffling);
+
+	    //while(curr_state != Shuffle) {
+	        if(needs_reset) {
+	                    draw_screen();
+	                    needs_reset = 0;
+	        }
+	    //}
+
+	    //change_state(Loading);
+
+	    // Send Shuffle info
+
+	    /*for(int i = 0; i < 52; i++) {
+	     * wait for bin number
+	     * move motors
+	     * send signal to pi that we moved motors
+	    }
+	     */
+
 		//sleep_micros(1670000);
 		//if (++i % 100 == 0)
 			//toggle_heartbeat_led();
