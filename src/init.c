@@ -53,6 +53,16 @@ void init_refresh_tim() {
     NVIC_EnableIRQ(TIM7_IRQn); // TODO Add priority
 }*/
 
+void init_DC_motors(void) {
+    enable_output_mode('B',3);
+    enable_output_mode('B',4);
+//    GPIOB->PUPDR &= ~(GPIO_PUPDR_3 | GPIO_PUPDR_4);
+//    GPIOB->PUPDR |= GPIO_PUPDR_3_1 | GPIO_PUPDR_4_1;
+    GPIOB->PUPDR &= ~(0xf << 6);
+    GPIOB->PUPDR |= 0xa << 6;
+}
+
+
 void init_tim1(void) {
     RCC->AHBENR  |= RCC_AHBENR_GPIOAEN;
     GPIOA->MODER &= ~0x00ff0000;
@@ -95,6 +105,8 @@ void init_opm_tim(void) {
 	init_opm_tim15();
 	init_opm_tim16();
 	init_stepper_timer_interrupts();
+	GPIOA->PUPDR &= ~(0x3000C00);
+	GPIOA->PUPDR |= 0x1000400;
 }
 
 void init_buttons() {

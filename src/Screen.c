@@ -93,11 +93,11 @@ void confirm_state() {
     needs_reset = 1;
 }
 
-void loading_state() {
+void shuffling_state() {
     draw_screen = DrawMenuScreen;
     on_press = NothingOnPress;
-    curr_state = Loading;
-    char title[] = "Loading";
+    curr_state = Shuffling;
+    char title[] = "Currently Shuffling Deck";
     strcpy(screen_title, title);
     num_selections = 0;
     curr_selection = 0;
@@ -139,8 +139,10 @@ void change_state(screen state) {
         winnerselect_state();
     } else if(state == Confirm) {
         confirm_state();
-    }  else if(state == Loading) {
-        loading_state();
+    } else if(state == WakeSyncScreen) {
+        wakesync_state();
+    } else if(state == Shuffling) {
+        shuffling_state();
     }
 }
 

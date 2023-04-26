@@ -28,6 +28,7 @@ void set_motor_dir(int stepper_num, int dir);
 void reverse_motor_dir(int stepper_num);
 void turn_motor(int stepper_num, int n_steps);
 void wait_for_turnable(int stepper_num);
+void set_motor_enable(int stepper_num, int en);
 
 #define STEPPER0_PULSE_PIN   ((gpio_pin) {.pin_group='A', .pin=2})
 #define STEPPER0_DIR_PIN     ((gpio_pin) {.pin_group='A', .pin=4})

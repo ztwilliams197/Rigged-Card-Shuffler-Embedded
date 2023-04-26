@@ -124,3 +124,11 @@ void init_stepper_timer_interrupts() {
 	TIM15->DIER |= TIM_DIER_UIE;
 	TIM16->DIER |= TIM_DIER_UIE;
 }
+
+void set_motor_enable(int stepper_num, int en) {
+    if(!is_valid_stepper(stepper_num)) return;
+
+    *get_ready_flag(stepper_num) = !en;
+    gpio_pin en_pin = get_enable_pin(stepper_num);
+    set_output(en_pin.pin_group,en_pin.pin,en);
+}

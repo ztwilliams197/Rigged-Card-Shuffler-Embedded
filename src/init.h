@@ -17,7 +17,11 @@ void init_refresh_tim();
 void init_tim1();
 void init_opm_tim();
 
+void init_uart();
+
 void init_buttons();
+
+void init_DC_motors(void);
 
 
 #endif /* INIT_H_ */

@@ -125,8 +125,8 @@ void TIM16_IRQHandler(void) {
 // Begin GPIO Exti stuff
 
 void EXTI4_15_IRQHandler(void) {
-    gen_N_pulses_dispenser(200);
-    gen_N_pulses_wheel(200);
+//    gen_N_pulses_dispenser(200);
+//    gen_N_pulses_wheel(200);
     if(EXTI->PR & EXTI_PR_PR4) { // Up -- 1
         on_press(0);
     	toggle_heartbeat_led();
@@ -221,44 +221,44 @@ void USART1_IRQHandler() {
 			break;
 		case IDENTIFY_SLOT:
 			// next bin = packet.metadata --> TODO impl stepper motor spinning to bin
-			wait_for_turnable(WHEEL_STEPPER);
-			turn_motor(WHEEL_STEPPER, numStepsBetweenBins(packet.metadata, 0));
-			wait_for_turnable(WHEEL_STEPPER);
-			turn_motor(CARD_INGEST_STEPPER, 200);
-			sleep_ms(1000); // wait for ingest to complete
+//			wait_for_turnable(WHEEL_STEPPER);
+////			turn_motor(WHEEL_STEPPER, numStepsBetweenBins(packet.metadata, 0));
+//			wait_for_turnable(WHEEL_STEPPER);
+////			turn_motor(CARD_INGEST_STEPPER, 200);
+//			sleep_ms(1000); // wait for ingest to complete
 
 			// online card output
 			stored_positions[packet.metadata] = 1;
-			if (stored_positions[num_bins_dispensed]) {
-				// turn to bin #num_bins_dispensed
-				spin_amount = numStepsBetweenBins(num_bins_dispensed, 0);
-				// turn another 39 + 0.5 bins
-				spin_amount += numStepsToSkipBins(39, 0);
-				half_step_offset = numStepsToSkipBins(1, 0) / 2;
-				spin_amount += half_step_offset;
-				turn_motor(WHEEL_STEPPER, spin_amount);
-				numStepsToSkipBins(1, 1); // update current_bin
-				// switch direction of stepper
-				reverse_motor_dir(WHEEL_STEPPER);
-				// dispense cards
-				while (stored_positions[num_bins_dispensed]) {
-					// turn 0.5 to reset
-					spin_amount = half_step_offset;
-					// compute next offset
-					half_step_offset = numStepsToSkipBins(1, 1);
-					// turn 0.5 to re-offset/drop
-					spin_amount += half_step_offset / 2;
-					half_step_offset -= half_step_offset / 2;
-					// update index
-					wait_for_turnable(WHEEL_STEPPER);
-					turn_motor(WHEEL_STEPPER, spin_amount);
-					num_bins_dispensed++;
-				}
-				// switch direction of stepper
-				reverse_motor_dir(WHEEL_STEPPER);
-				// turn 0.5 bins
-				turn_motor(WHEEL_STEPPER, numStepsToSkipBins(1, 0) - half_step_offset);
-			}
+//			if (stored_positions[num_bins_dispensed]) {
+//				// turn to bin #num_bins_dispensed
+//				spin_amount = numStepsBetweenBins(num_bins_dispensed, 0);
+//				// turn another 39 + 0.5 bins
+//				spin_amount += numStepsToSkipBins(39, 0);
+//				half_step_offset = numStepsToSkipBins(1, 0) / 2;
+//				spin_amount += half_step_offset;
+////				turn_motor(WHEEL_STEPPER, spin_amount);
+//				numStepsToSkipBins(1, 1); // update current_bin
+//				// switch direction of stepper
+//				reverse_motor_dir(WHEEL_STEPPER);
+//				// dispense cards
+////				while (stored_positions[num_bins_dispensed]) {
+////					// turn 0.5 to reset
+////					spin_amount = half_step_offset;
+////					// compute next offset
+////					half_step_offset = numStepsToSkipBins(1, 1);
+////					// turn 0.5 to re-offset/drop
+////					spin_amount += half_step_offset / 2;
+////					half_step_offset -= half_step_offset / 2;
+////					// update index
+////					wait_for_turnable(WHEEL_STEPPER);
+//////					turn_motor(WHEEL_STEPPER, spin_amount);
+////					num_bins_dispensed++;
+////				}
+//				// switch direction of stepper
+//				reverse_motor_dir(WHEEL_STEPPER);
+//				// turn 0.5 bins
+////				turn_motor(WHEEL_STEPPER, numStepsToSkipBins(1, 0) - half_step_offset);
+//			}
 
 			// process next card
 			if (++current_bin_count < 52)
@@ -286,6 +286,11 @@ void redraw() {
 	sleep_ms(33); // run @ ~30Hz
 }
 
+void set_dc_motors(int on) {
+    set_output('B',3,on);
+    set_output('B',4,on);
+}
+
 #define CHECK_SYSTEM_RESET() do { if (got_reset) goto _exec_loop; } while (0)
 
 /**
@@ -299,16 +304,26 @@ int main(void)
 	// INIT
 	init_buttons();
 	LCD_Setup();
+	init_uart();
 
-	init_opm_tim();
+	//init_opm_tim();
+	init_DC_motors();
 //    init_system();
+//	set_motor_enable(0,0);
+//	set_motor_enable(1,0);
+//
+//	set_motor_dir(0, 0); // stepper 0 = near power jack
+//	set_motor_dir(1, 0); // stepper 1 = near BJTs
 
-	set_motor_dir(0, 0); // stepper 0 = near power jack
-	set_motor_dir(1, 0); // stepper 1 = near BJTs
+	set_dc_motors(1);
 
 	sleep_ms(10); // wait for all changes to propagate if necessary??
 
 //    init_system();
+//	gen_N_pulses_dispenser(200);
+
+	set_motor_enable(0,1);
+	set_motor_enable(1,1);
 
 	int i = 0;
 _exec_loop:
@@ -321,6 +336,7 @@ _exec_loop:
 	// Wait for RESET packet conf
 	change_state(WakeSyncScreen); // "Initializing systems" or something on display??
 	while (!got_reset) {
+	    sleep_ms(10);
 		send_packet(USART1, build_packet0(TX_RESET));
 		redraw();
 	}
@@ -353,7 +369,9 @@ _exec_loop:
 
 	// Start shuffling
 	// TODO enable/disable dc motors around shuffling block
-//	enable_dc_motors();
+//	set_dc_motors(1);
+//	set_motor_enable(0,0);
+//	set_motor_enable(1,0);
 
 	current_bin_count = 0;
 	for (i = 0; i < NUM_BINS; i++)
@@ -367,34 +385,36 @@ _exec_loop:
 		redraw();
 	}
 
-//	disable_dc_motors();
+//	set_dc_motors(0);
+//	set_motor_enable(0,1);
+//	set_motor_enable(1,1);
 
 	// output cards from bins
 
 	// turn to bin #num_bins_dispensed
-	spin_amount = numStepsBetweenBins(num_bins_dispensed, 0);
-	// turn another 39 + 0.5 bins
-	spin_amount += numStepsToSkipBins(39, 0);
-	half_step_offset = numStepsToSkipBins(1, 0) / 2;
-	spin_amount += half_step_offset;
-	turn_motor(WHEEL_STEPPER, spin_amount);
-	numStepsToSkipBins(1, 1); // update current_bin
-	// switch direction of stepper
-	reverse_motor_dir(WHEEL_STEPPER);
-	// dispense cards
-	while (stored_positions[num_bins_dispensed]) {
-		// turn 0.5 to reset
-		spin_amount = half_step_offset;
-		// compute next offset
-		half_step_offset = numStepsToSkipBins(1, 1);
-		// turn 0.5 to re-offset/drop
-		spin_amount += half_step_offset / 2;
-		half_step_offset -= half_step_offset / 2;
-		// update index
-		wait_for_turnable(WHEEL_STEPPER);
-		turn_motor(WHEEL_STEPPER, spin_amount);
-		num_bins_dispensed++;
-	}
+//	spin_amount = numStepsBetweenBins(num_bins_dispensed, 0);
+//	// turn another 39 + 0.5 bins
+//	spin_amount += numStepsToSkipBins(39, 0);
+//	half_step_offset = numStepsToSkipBins(1, 0) / 2;
+//	spin_amount += half_step_offset;
+////	turn_motor(WHEEL_STEPPER, spin_amount);
+//	numStepsToSkipBins(1, 1); // update current_bin
+//	// switch direction of stepper
+//	reverse_motor_dir(WHEEL_STEPPER);
+//	// dispense cards
+//	while (stored_positions[num_bins_dispensed]) {
+//		// turn 0.5 to reset
+//		spin_amount = half_step_offset;
+//		// compute next offset
+//		half_step_offset = numStepsToSkipBins(1, 1);
+//		// turn 0.5 to re-offset/drop
+//		spin_amount += half_step_offset / 2;
+//		half_step_offset -= half_step_offset / 2;
+//		// update index
+//		wait_for_turnable(WHEEL_STEPPER);
+////		turn_motor(WHEEL_STEPPER, spin_amount);
+//		num_bins_dispensed++;
+//	}
 
 	goto _exec_loop; // inf loop for system loop
 }
